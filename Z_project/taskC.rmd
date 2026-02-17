@@ -1,0 +1,169 @@
+---
+title: "Task C - Lizard"
+author: "Luca Scherer"
+output: html_notebook
+---
+
+# Dataset Exploration
+
+```{r}
+library(gRbase)
+library(dplyr)
+library(ggpubr)
+library(ggplot2)
+
+data(lizardRAW)
+str(lizardRAW)
+summary(lizardRAW)
+```
+```{r}
+lizard <- lizardRAW %>%
+  rename(
+    Species = species,
+    Diameter = diam,
+    Height = height,
+  )
+```
+
+```{r}
+ggplot(lizard, aes(x = Species, fill = Height)) +
+  geom_bar(position = "fill") +
+  labs(title = "high vs. low position per species", y = "Proportion", x = "Species") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal()
+
+ggplot(lizard, aes(x = Diameter, fill = Height)) +
+  geom_bar(position = "fill") +
+  labs(title = "high vs. low position per diameter", y = "Proportion", x = "Diameter") +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal()
+
+ggplot(lizard, aes(x = Species, fill = Height)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~Diameter) +
+  labs(title = "height per species and diameter", y = "Proportion", x = "Species") +
+  theme_bw()
+
+```
+## Interpretation
+- There are 4 groups which are the combination of species and diameter.
+- With larger diameter "dist" seems to be more likely to be high. For "anoli" there is no significatn difference in height.
+  - This indicates an interaction between species and diameter.
+- Diameter alone is not a good predictor for height.
+- Species is a better predictor for height than diameter.
+
+In this case a two-way anova could be appropriate (due to the last graphic) to test the interaction between species and diameter on height.
+
+# Two Way ANOVA
+
+```{r}
+lizard$Diameter <- factor(lizard$Diameter)
+lizard$Species <- factor(lizard$Species)
+
+anova_model <- aov(as.numeric(Height) ~ Species * Diameter, data = lizard)
+summary(anova_model)
+```
+## Results
+
+There is a significant main effect of Species on Height (F = 10.412, p = 0.00135) which suggests that the average height differs between species. The effect of Diameter is not significant (F = 1.84, p = 0.172) which indicates that diameter alone does not explain the variation in height. The interaction between Species and Diameter is also not significant (F = 0.28, p = 0.599).
+
+In short: Species matters, diameter alone doest not and there is no evidence of interaction.
+
+
+## Prove of Assumptions
+
+In the above ANOVA the Height feature was converted to numeric to use it as the continuous target variable.
+Since Height is actually a categorical variable, a ANOVA is not appropriate.
+
+
+```{r}
+str(lizard$Height)
+```
+
+Just for completeness i will check for the other assumptions of ANOVA.
+
+Homogeneity of variance:
+```{r}
+plot(anova_model, 1)
+```
+Normality of residuals:
+```{r}
+plot(anova_model, 2)
+```
+
+Shapiro-Wilk test for normality:
+```{r}
+shapiro.test(residuals(anova_model))
+```
+
+## Conclusion of Assumptions
+
+*Residuals vs. Fitted*:
+
+- Indicates binary data, which is not appropriate for ANOVA.
+- No clear pattern
+- Due to the 2 classes of Height, the plot is not very informative.
+
+*Normal Q-Q*:
+
+- Points lie on a staircase pattern which indicates discrete residuals.
+- Significant deviation from normality.
+
+*Shapiro-Wilk test*:
+
+- $H_0$: Residuals are normally distributed.
+- Since p-value < 0.05 the null hypothesis is rejected.
+
+All assumptions of ANOVA are violated, therefore the ANOVA is not appropriate for this data.
+
+# Kruskal-Wallis Test
+
+Since the data contains non-connected groups (not repeated measures on same subjects) and the assumptions of ANOVA are violated, a Kruskal-Wallis test is appropriate.
+
+```{r}
+kruskal.test(as.numeric(Height) ~ Species, data = lizard)
+kruskal.test(as.numeric(Height) ~ Diameter, data = lizard)
+```
+
+## Results
+
+*Height $\sim$ Species*:
+
+$H_0$: The distribution of height is the same for all species.
+
+Since p-value < 0.05 the null hypothesis is rejected, indicating that the distribution of height differs between species.
+
+*Height $\sim$ Diameter*:
+
+$H_0$: The distribution of height is the same for all diameters.
+Since p-value > 0.05 the null hypothesis is not rejected, indicating that the distribution of height does not differ between diameters.
+
+
+### Conclusion
+The Kruskal-Wallis test indicates that the distribution of height differs between species, but not between diameters. This is consistent with the results of the ANOVA, where species was significant but diameter was not.
+
+Two Kruskal-Wallis tests were performed since it only tests one factor at a time and in contrast to ANOVA it does not test for interaction effects.
+
+Other tests like logistic regression could be more useful in this case.
+
+# Logistic Regression
+I think its not actually part of the task, since we never did logistic regression before, but to answer the whole question, i will do it anyway.
+
+```{r}
+glm(Height ~ Species * Diameter, family = binomial, data = lizard)
+```
+
+
+# Overall Conclusion
+
+The logistic regression model reveals that species has a clear influence on height.
+Specifically dist are significantly more likely to be found at higher perches compared to anoli.
+In contrast, the diameter alone is not a strong predictor of height.
+Its effect is small and slightly negative.
+
+The interaction between species and diameter is also negative which suggests that the benefit of larger
+diameter is not stronger for dist than for anoli.
+In fact, the slight interaction indicates that dist may benefit less from larger diameters in terms of achieving higher perches.
+
+The model provides some evidence for species differences in perch height.
+But no clear idea if the diameter is a good predictor for height.
