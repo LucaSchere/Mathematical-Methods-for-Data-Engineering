@@ -12,7 +12,7 @@ Short summary:
 
 - `task5` – Covers data preprocessing, feature engineering, and basic classification experiments (e.g., with scikit-learn), including evaluation metrics.
 
-- `Z_project` – Combination of text analysis and tabular data evaluation; `taskC.rmd` is R Markdown for reproducible results, while the notebooks complement it with exploratory scripts.
+- `Z_project` – Combination of text analysis and tabular data evaluation; `taskC.rmd` for reproducible results, while the notebooks complement it with exploratory scripts.
 
 Quick setup (minimal)
 - Python 3.9+ recommended.
